@@ -1,30 +1,32 @@
 # client_crypto.py
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP, AES
-from Crypto.Random import get_random_bytes
-from base64 import b64encode, b64decode
+from Crypto.Cipher import PKCS1_OAEP
+import base64
 
 class CryptoManager:
     def __init__(self):
-        self.rsa_key = RSA.generate(2048)
-        self.aes_key = None
+        self.private_key = RSA.generate(4096)
+        self.public_key = self.private_key.publickey()
+        self.peer_public_key = None
 
     def get_public_key(self):
-        return self.rsa_key.publickey().export_key()
+        return self.public_key.export_key()
 
-    def decrypt_aes_key(self, encrypted_key):
-        cipher_rsa = PKCS1_OAEP.new(self.rsa_key)
-        self.aes_key = cipher_rsa.decrypt(b64decode(encrypted_key))
+    def set_peer_public_key(self, public_key):
+        self.peer_public_key = RSA.import_key(public_key)
 
     def encrypt_message(self, message):
-        cipher_aes = AES.new(self.aes_key, AES.MODE_EAX)
-        nonce = cipher_aes.nonce
-        ciphertext, tag = cipher_aes.encrypt_and_digest(message.encode())
-        return b64encode(nonce + tag + ciphertext).decode()
+        cipher_rsa = PKCS1_OAEP.new(self.peer_public_key)
+        encrypted_message = cipher_rsa.encrypt(message.encode('utf-8'))
+        encrypted_message_b64 = base64.b64encode(encrypted_message).decode('utf-8')
+        return encrypted_message_b64
 
-    def decrypt_message(self, encrypted_message):
-        data = b64decode(encrypted_message)
-        nonce, tag, ciphertext = data[:16], data[16:32], data[32:]
-        cipher_aes = AES.new(self.aes_key, AES.MODE_EAX, nonce=nonce)
-        message = cipher_aes.decrypt_and_verify(ciphertext, tag)
-        return message.decode()
+    def decrypt_message(self, encrypted_message_b64):
+        try:
+            encrypted_message = base64.b64decode(encrypted_message_b64)
+            cipher_rsa = PKCS1_OAEP.new(self.private_key)
+            message = cipher_rsa.decrypt(encrypted_message).decode('utf-8')
+            return message
+        except Exception as e:
+            print(f"Error decrypting message: {e}")
+            return ""

@@ -31,12 +31,12 @@ class ChatClient:
             # Send RSA public key
             public_key = self.crypto_manager.get_public_key()
             self.socket.sendall(public_key)
-            print(f"Sent public key to server: {public_key[:30]}...")  # Debugging line
+            print(f"Sent public key to server: {public_key[:30]}...")
 
-            # Receive encrypted AES key
-            encrypted_aes_key = self.socket.recv(4096)
-            print(f"Received encrypted AES key: {encrypted_aes_key[:30]}...")  # Debugging line
-            self.crypto_manager.decrypt_aes_key(encrypted_aes_key)
+            # Receive peer's public key
+            peer_public_key = self.socket.recv(4096)
+            print(f"Received public key from peer: {peer_public_key[:30]}...")
+            self.crypto_manager.set_peer_public_key(peer_public_key)
 
             threading.Thread(target=self.receive_messages, daemon=True).start()
         except Exception as e:
@@ -47,17 +47,17 @@ class ChatClient:
         if message:
             encrypted_message = self.crypto_manager.encrypt_message(message)
             self.socket.sendall(encrypted_message.encode())
-            print(f"Sent encrypted message: {encrypted_message[:30]}...")  # Debugging line
-            self.gui.chatWindow.append(f"You: {message}")
+            print(f"Sent encrypted message: {encrypted_message[:30]}...")
+            self.gui.append_message(f"You: {message}")
             self.gui.messageInput.clear()
 
     def receive_messages(self):
         while True:
             try:
                 encrypted_message = self.socket.recv(4096).decode()
-                print(f"Received encrypted message: {encrypted_message[:30]}...")  # Debugging line
+                print(f"Received encrypted message: {encrypted_message[:30]}...")
                 message = self.crypto_manager.decrypt_message(encrypted_message)
-                self.gui.chatWindow.append(f"Friend: {message}")
+                self.gui.append_message(f"Friend: {message}")
             except Exception as e:
                 print(f"Error receiving message: {e}")
                 break

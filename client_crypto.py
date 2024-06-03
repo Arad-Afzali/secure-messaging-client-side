@@ -16,6 +16,8 @@ class CryptoManager:
         self.peer_public_key = RSA.import_key(public_key)
 
     def encrypt_message(self, message):
+        if self.peer_public_key is None:
+            raise ValueError("Peer public key is not set")
         cipher_rsa = PKCS1_OAEP.new(self.peer_public_key)
         encrypted_message = cipher_rsa.encrypt(message.encode('utf-8'))
         encrypted_message_b64 = base64.b64encode(encrypted_message).decode('utf-8')
@@ -25,8 +27,8 @@ class CryptoManager:
         try:
             encrypted_message = base64.b64decode(encrypted_message_b64)
             cipher_rsa = PKCS1_OAEP.new(self.private_key)
-            message = cipher_rsa.decrypt(encrypted_message).decode('utf-8')
-            return message
+            decrypted_message = cipher_rsa.decrypt(encrypted_message).decode('utf-8')
+            return decrypted_message
         except Exception as e:
             print(f"Error decrypting message: {e}")
             return ""

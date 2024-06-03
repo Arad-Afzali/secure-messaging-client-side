@@ -1,33 +1,39 @@
 # client_gui.py
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit, QPushButton, QLabel, QInputDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QLabel
 
 class ChatClientGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.initUI()
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         self.setWindowTitle("Secure Chat Client")
-        self.setGeometry(100, 100, 600, 400)
 
         self.layout = QVBoxLayout()
 
-        self.serverIpInput = QLineEdit(self)
-        self.serverIpInput.setPlaceholderText("Server IP")
-        self.layout.addWidget(self.serverIpInput)
+        self.serverIpLabel = QLabel("Server IP:")
+        self.serverIpInput = QLineEdit()
+        self.serverPortLabel = QLabel("Server Port:")
+        self.serverPortInput = QLineEdit()
+        self.connectButton = QPushButton("Connect")
+        
+        self.sendPublicKeyButton = QPushButton("Send Public Key")
+        self.receivePublicKeyButton = QPushButton("Receive Public Key")
 
-        self.serverPortInput = QLineEdit(self)
-        self.serverPortInput.setPlaceholderText("Server Port")
-        self.layout.addWidget(self.serverPortInput)
-
-        self.chatWindow = QTextEdit(self)
+        self.chatWindow = QTextEdit()
         self.chatWindow.setReadOnly(True)
+        self.messageInput = QLineEdit()
+        self.sendButton = QPushButton("Send")
+
+        self.layout.addWidget(self.serverIpLabel)
+        self.layout.addWidget(self.serverIpInput)
+        self.layout.addWidget(self.serverPortLabel)
+        self.layout.addWidget(self.serverPortInput)
+        self.layout.addWidget(self.connectButton)
+        self.layout.addWidget(self.sendPublicKeyButton)
+        self.layout.addWidget(self.receivePublicKeyButton)
         self.layout.addWidget(self.chatWindow)
-
-        self.messageInput = QLineEdit(self)
         self.layout.addWidget(self.messageInput)
-
-        self.sendButton = QPushButton("Send", self)
         self.layout.addWidget(self.sendButton)
 
         self.setLayout(self.layout)

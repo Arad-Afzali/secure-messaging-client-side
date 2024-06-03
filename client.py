@@ -24,6 +24,8 @@ class ChatClient(QObject):
         self.receive_public_key_signal.connect(self.receive_public_key)
         self.update_progress_signal.connect(self.update_progress_bar)
 
+        self.gui.closeEvent = self.close_event  # Ensure the server is notified when the client closes
+
     def start(self):
         self.gui.show()
         self.gui.sendButton.clicked.connect(self.handle_send_message)
@@ -110,8 +112,21 @@ class ChatClient(QObject):
             except Exception as e:
                 print(f"Error receiving message: {e}")
                 break
-        self.socket.close()
-        QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Disconnected from the server."))
+        self.close_connection()
+
+    def close_connection(self):
+        if self.socket:
+            try:
+                self.socket.close()
+                print("Socket closed.")
+            except Exception as e:
+                print(f"Error closing socket: {e}")
+            finally:
+                self.socket = None
+
+    def close_event(self, event):
+        self.close_connection()
+        event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

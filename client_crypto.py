@@ -6,7 +6,7 @@ from base64 import b64encode, b64decode
 
 class CryptoManager:
     def __init__(self):
-        self.rsa_key = RSA.generate(4096)
+        self.rsa_key = RSA.generate(2048)
         self.aes_key = None
 
     def get_public_key(self):

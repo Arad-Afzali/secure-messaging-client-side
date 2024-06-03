@@ -29,9 +29,9 @@ class ChatClientGUI(QWidget):
         self.messageInput.setPlaceholderText('Enter message...')
         layout.addWidget(self.messageInput)
         
-        sendButton = QPushButton('Send', self)
-        sendButton.clicked.connect(self.sendMessage)
-        layout.addWidget(sendButton)
+        self.sendButton = QPushButton('Send', self)  # Use self.sendButton
+        self.sendButton.clicked.connect(self.sendMessage)
+        layout.addWidget(self.sendButton)
         
         self.setLayout(layout)
 

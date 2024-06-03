@@ -1,10 +1,10 @@
 # client.py
 import socket
 import threading
+import sys
 from PyQt5.QtWidgets import QApplication
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
-import sys
 
 class ChatClient:
     def __init__(self):
@@ -15,25 +15,39 @@ class ChatClient:
     def start(self):
         self.gui.show()
         self.gui.sendButton.clicked.connect(self.handle_send_message)
+        self.gui.serverIpInput.returnPressed.connect(self.connect_to_server)
+        self.gui.serverPortInput.returnPressed.connect(self.connect_to_server)
 
-    def connect_to_server(self, ip, port):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((ip, int(port)))
+    def connect_to_server(self):
+        ip = self.gui.serverIpInput.text()
+        port = int(self.gui.serverPortInput.text())
+        threading.Thread(target=self.establish_connection, args=(ip, port), daemon=True).start()
 
-        # Send RSA public key
-        self.socket.sendall(self.crypto_manager.get_public_key())
+    def establish_connection(self, ip, port):
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((ip, port))
 
-        # Receive encrypted AES key
-        encrypted_aes_key = self.socket.recv(4096)
-        self.crypto_manager.decrypt_aes_key(encrypted_aes_key)
+            # Send RSA public key
+            public_key = self.crypto_manager.get_public_key()
+            self.socket.sendall(public_key)
+            print(f"Sent public key to server: {public_key[:30]}...")  # Debugging line
 
-        threading.Thread(target=self.receive_messages, daemon=True).start()
+            # Receive encrypted AES key
+            encrypted_aes_key = self.socket.recv(4096)
+            print(f"Received encrypted AES key: {encrypted_aes_key[:30]}...")  # Debugging line
+            self.crypto_manager.decrypt_aes_key(encrypted_aes_key)
+
+            threading.Thread(target=self.receive_messages, daemon=True).start()
+        except Exception as e:
+            print(f"Error connecting to server: {e}")
 
     def handle_send_message(self):
         message = self.gui.messageInput.text()
         if message:
             encrypted_message = self.crypto_manager.encrypt_message(message)
             self.socket.sendall(encrypted_message.encode())
+            print(f"Sent encrypted message: {encrypted_message[:30]}...")  # Debugging line
             self.gui.chatWindow.append(f"You: {message}")
             self.gui.messageInput.clear()
 
@@ -41,6 +55,7 @@ class ChatClient:
         while True:
             try:
                 encrypted_message = self.socket.recv(4096).decode()
+                print(f"Received encrypted message: {encrypted_message[:30]}...")  # Debugging line
                 message = self.crypto_manager.decrypt_message(encrypted_message)
                 self.gui.chatWindow.append(f"Friend: {message}")
             except Exception as e:

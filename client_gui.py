@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QLabel
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QLabel, QProgressBar
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QTimer
 
 class ChatClientGUI(QWidget):
     message_received = pyqtSignal(str)
@@ -22,11 +22,16 @@ class ChatClientGUI(QWidget):
         
         self.sendPublicKeyButton = QPushButton("Send Public Key")
         self.receivePublicKeyButton = QPushButton("Receive Public Key")
+        self.sendPublicKeyButton.setEnabled(False)
+        self.receivePublicKeyButton.setEnabled(False)
 
         self.chatWindow = QTextEdit()
         self.chatWindow.setReadOnly(True)
         self.messageInput = QLineEdit()
         self.sendButton = QPushButton("Send")
+
+        self.progressBar = QProgressBar()
+        self.progressBar.setValue(0)
 
         self.layout.addWidget(self.serverIpLabel)
         self.layout.addWidget(self.serverIpInput)
@@ -38,6 +43,7 @@ class ChatClientGUI(QWidget):
         self.layout.addWidget(self.chatWindow)
         self.layout.addWidget(self.messageInput)
         self.layout.addWidget(self.sendButton)
+        self.layout.addWidget(self.progressBar)
 
         self.setLayout(self.layout)
 

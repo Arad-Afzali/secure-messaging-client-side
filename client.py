@@ -2,15 +2,27 @@ import socket
 import threading
 import sys
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QMetaObject, Q_ARG
+from PyQt5.QtCore import QMetaObject, Q_ARG, QTimer, Qt, pyqtSignal, QObject
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
 
-class ChatClient:
+class ChatClient(QObject):
+    start_timer_signal = pyqtSignal()
+    send_public_key_signal = pyqtSignal()
+    receive_public_key_signal = pyqtSignal()
+    update_progress_signal = pyqtSignal(int)
+
     def __init__(self):
+        super().__init__()
         self.gui = ChatClientGUI()
         self.crypto_manager = CryptoManager()
         self.socket = None
+        self.time_elapsed = 0
+
+        self.start_timer_signal.connect(self.start_timer)
+        self.send_public_key_signal.connect(self.send_public_key)
+        self.receive_public_key_signal.connect(self.receive_public_key)
+        self.update_progress_signal.connect(self.update_progress_bar)
 
     def start(self):
         self.gui.show()
@@ -29,8 +41,32 @@ class ChatClient:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((ip, port))
             threading.Thread(target=self.receive_messages, daemon=True).start()
+            self.start_timer_signal.emit()
         except Exception as e:
             print(f"Error connecting to server: {e}")
+
+    def start_timer(self):
+        self.gui.progressBar.setValue(0)
+        self.time_elapsed = 0
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.on_timer_timeout)
+        self.timer.start(1000)
+
+        QTimer.singleShot(10000, self.send_public_key_signal.emit)
+        QTimer.singleShot(30000, self.receive_public_key_signal.emit)
+
+    def on_timer_timeout(self):
+        self.time_elapsed += 1
+        self.update_progress_signal.emit(self.time_elapsed)
+
+    def update_progress_bar(self, elapsed_time):
+        self.gui.progressBar.setValue(int((elapsed_time / 30) * 100))
+
+        if elapsed_time == 10:
+            self.gui.sendPublicKeyButton.setEnabled(True)
+        elif elapsed_time == 30:
+            self.gui.receivePublicKeyButton.setEnabled(True)
+            self.timer.stop()
 
     def send_public_key(self):
         if self.socket:

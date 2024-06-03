@@ -112,7 +112,11 @@ class ChatClient(QObject):
             except Exception as e:
                 print(f"Error receiving message: {e}")
                 break
+        self.notify_disconnection()
+
+    def notify_disconnection(self):
         self.close_connection()
+        QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Disconnected from the server."))
 
     def close_connection(self):
         if self.socket:

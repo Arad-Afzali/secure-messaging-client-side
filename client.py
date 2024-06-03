@@ -1,8 +1,8 @@
-# client.py
 import socket
 import threading
 import sys
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QMetaObject, Q_ARG
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
 
@@ -50,7 +50,7 @@ class ChatClient:
         if message:
             try:
                 encrypted_message = self.crypto_manager.encrypt_message(message)
-                self.socket.sendall(encrypted_message.encode())
+                self.socket.sendall((encrypted_message + "\n").encode())
                 print(f"Sent encrypted message: {encrypted_message[:30]}...")
                 self.gui.append_message(f"You: {message}")
                 self.gui.messageInput.clear()
@@ -58,15 +58,24 @@ class ChatClient:
                 print(f"Error sending message: {e}")
 
     def receive_messages(self):
+        buffer = ""
         while True:
             try:
-                encrypted_message = self.socket.recv(4096).decode()
-                print(f"Received encrypted message: {encrypted_message[:30]}...")
-                message = self.crypto_manager.decrypt_message(encrypted_message)
-                self.gui.append_message(f"Friend: {message}")
+                data = self.socket.recv(4096)
+                if not data:
+                    print("Connection closed by the server.")
+                    break
+                buffer += data.decode()
+                while "\n" in buffer:
+                    encrypted_message, buffer = buffer.split("\n", 1)
+                    print(f"Received encrypted message: {encrypted_message[:30]}...")
+                    message = self.crypto_manager.decrypt_message(encrypted_message)
+                    QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, f"Friend: {message}"))
             except Exception as e:
                 print(f"Error receiving message: {e}")
                 break
+        self.socket.close()
+        QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Disconnected from the server."))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

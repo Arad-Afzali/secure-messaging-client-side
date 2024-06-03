@@ -1,10 +1,13 @@
-# client_gui.py
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QLabel
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
 
 class ChatClientGUI(QWidget):
+    message_received = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.message_received.connect(self.append_message)
 
     def init_ui(self):
         self.setWindowTitle("Secure Chat Client")
@@ -38,5 +41,6 @@ class ChatClientGUI(QWidget):
 
         self.setLayout(self.layout)
 
+    @pyqtSlot(str)
     def append_message(self, message):
         self.chatWindow.append(message)

@@ -75,6 +75,8 @@ class ChatClient(QObject):
             peer_public_key = self.socket.recv(4096)
             self.crypto_manager.set_peer_public_key(peer_public_key)
             print(f"Received public key from peer: {peer_public_key[:30]}...")
+            QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Connected!"))
+
 
     def handle_send_message(self):
         message = self.gui.messageInput.text()

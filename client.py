@@ -30,8 +30,7 @@ class ChatClient(QObject):
         self.gui.show()
         self.gui.sendButton.clicked.connect(self.handle_send_message)
         self.gui.connectButton.clicked.connect(self.connect_to_server)
-        self.gui.sendPublicKeyButton.clicked.connect(self.send_public_key)
-        self.gui.receivePublicKeyButton.clicked.connect(self.receive_public_key)
+
 
     def connect_to_server(self):
         ip = self.gui.serverIpInput.text()
@@ -63,12 +62,6 @@ class ChatClient(QObject):
 
     def update_progress_bar(self, elapsed_time):
         self.gui.progressBar.setValue(int((elapsed_time / 30) * 100))
-
-        if elapsed_time == 10:
-            self.gui.sendPublicKeyButton.setEnabled(True)
-        elif elapsed_time == 30:
-            self.gui.receivePublicKeyButton.setEnabled(True)
-            self.timer.stop()
 
     def send_public_key(self):
         if self.socket:

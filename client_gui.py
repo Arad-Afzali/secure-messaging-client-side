@@ -20,10 +20,6 @@ class ChatClientGUI(QWidget):
         self.serverPortInput = QLineEdit()
         self.connectButton = QPushButton("Connect")
         
-        self.sendPublicKeyButton = QPushButton("Send Public Key")
-        self.receivePublicKeyButton = QPushButton("Receive Public Key")
-        self.sendPublicKeyButton.setEnabled(False)
-        self.receivePublicKeyButton.setEnabled(False)
 
         self.chatWindow = QTextEdit()
         self.chatWindow.setReadOnly(True)
@@ -38,8 +34,6 @@ class ChatClientGUI(QWidget):
         self.layout.addWidget(self.serverPortLabel)
         self.layout.addWidget(self.serverPortInput)
         self.layout.addWidget(self.connectButton)
-        self.layout.addWidget(self.sendPublicKeyButton)
-        self.layout.addWidget(self.receivePublicKeyButton)
         self.layout.addWidget(self.chatWindow)
         self.layout.addWidget(self.messageInput)
         self.layout.addWidget(self.sendButton)

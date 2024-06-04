@@ -53,8 +53,8 @@ class ChatClient(QObject):
         self.timer.timeout.connect(self.on_timer_timeout)
         self.timer.start(1000)
 
-        QTimer.singleShot(10000, self.send_public_key_signal.emit)
-        QTimer.singleShot(30000, self.receive_public_key_signal.emit)
+        QTimer.singleShot(5000, self.send_public_key_signal.emit)
+        QTimer.singleShot(27000, self.receive_public_key_signal.emit)
 
     def on_timer_timeout(self):
         self.time_elapsed += 1

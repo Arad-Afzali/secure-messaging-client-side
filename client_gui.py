@@ -34,10 +34,10 @@ class ChatClientGUI(QWidget):
         self.layout.addWidget(self.serverPortLabel)
         self.layout.addWidget(self.serverPortInput)
         self.layout.addWidget(self.connectButton)
+        self.layout.addWidget(self.progressBar)
         self.layout.addWidget(self.chatWindow)
         self.layout.addWidget(self.messageInput)
         self.layout.addWidget(self.sendButton)
-        self.layout.addWidget(self.progressBar)
 
         self.setLayout(self.layout)
 

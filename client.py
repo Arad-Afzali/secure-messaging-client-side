@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QMetaObject, Q_ARG, QTimer, Qt, pyqtSignal, QObject
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
+import errno
+
 
 class ChatClient(QObject):
     start_timer_signal = pyqtSignal()
@@ -54,8 +56,8 @@ class ChatClient(QObject):
         self.timer.timeout.connect(self.on_timer_timeout)
         self.timer.start(1000)
 
-        QTimer.singleShot(10000, self.send_public_key_signal.emit)
-        QTimer.singleShot(30000, self.receive_public_key_signal.emit)
+        QTimer.singleShot(5000, self.send_public_key_signal.emit)
+        QTimer.singleShot(25000, self.receive_public_key_signal.emit)
 
     def on_timer_timeout(self):
         self.time_elapsed += 1
@@ -78,10 +80,23 @@ class ChatClient(QObject):
 
     def receive_public_key(self):
         if self.socket:
-            self.socket.sendall(b'REQ_KEY')
-            peer_public_key = self.socket.recv(4096)
-            self.crypto_manager.set_peer_public_key(peer_public_key)
-            print(f"Received public key from peer: {peer_public_key[:30]}...")
+            try:
+                self.socket.settimeout(5)  # Set a timeout for receiving data
+                self.socket.sendall(b'REQ_KEY')
+                peer_public_key = self.socket.recv(4096)
+                if peer_public_key:
+                    self.crypto_manager.set_peer_public_key(peer_public_key)
+                    print(f"Received public key from peer: {peer_public_key[:30]}...")
+                else:
+                    raise socket.timeout
+            except socket.timeout:
+                print("No public key received from the server within the timeout period.")
+                self.notify_disconnection()
+            except Exception as e:
+                print(f"Error receiving public key: {e}")
+            finally:
+                if self.socket:
+                    self.socket.settimeout(None)  # Remove the timeout only if the socket exists
 
     def handle_send_message(self):
         message = self.gui.messageInput.text()
@@ -109,6 +124,13 @@ class ChatClient(QObject):
                     print(f"Received encrypted message: {encrypted_message[:30]}...")
                     message = self.crypto_manager.decrypt_message(encrypted_message)
                     QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, f"Friend: {message}"))
+            except OSError as e:
+                if e.errno == errno.EWOULDBLOCK:
+                    print("Resource temporarily unavailable; retrying...")
+                    continue
+                else:
+                    print(f"Error receiving message: {e}")
+                    break
             except Exception as e:
                 print(f"Error receiving message: {e}")
                 break

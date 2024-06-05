@@ -29,7 +29,8 @@ class ChatClient:
         try:
             self.sock.connect((host, int(port)))
             self.connected = True
-            self.append_message("Connected to server.")
+            self.append_message("Connected to server...")
+            self.append_message("waiting for your friend's connection...")
             threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
             self.append_message(f"Failed to connect to server: {e}")
@@ -58,7 +59,7 @@ class ChatClient:
     def receive_peer_public_key(self, message):
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
-        self.append_message("Received peer's public key.")
+        self.append_message("Your friend is now Connected!")
 
     def send_message(self):
         message = self.gui.messageInput.text()

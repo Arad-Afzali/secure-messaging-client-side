@@ -3,7 +3,6 @@ import socket
 import threading
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import pyqtSlot, Qt, QMetaObject, Q_ARG
-
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
 
@@ -41,16 +40,19 @@ class ChatClient:
             self.connected = True
             self.append_message("Connected to server...")
             self.append_message("Waiting for your friend's connection...")
+            self.gui.update_connection_status("Connecting")
             self.disconnect_button_order()
 
             threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
             self.append_message(f"Failed to connect to server: {e}")
+            self.gui.update_connection_status("Disconnected")
             self.gui.disconnectButton.setEnabled(False)
 
     def disconnect_from_server(self):
         self.close_connection()
         self.connect_button_order()
+        self.gui.update_connection_status("Disconnected")
 
     def listen_for_messages(self):
         try:
@@ -67,6 +69,7 @@ class ChatClient:
                     self.append_message("Disconnected from server.")
                     self.connected = False
                     self.connect_button_order()
+                    self.gui.update_connection_status("Disconnected")
                 else:
                     self.receive_message(message)
         except socket.error as e:
@@ -74,11 +77,13 @@ class ChatClient:
                 self.append_message(f"Socket error: {e}")
                 self.close_connection()
                 self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
         except Exception as e:
             if self.connected:
                 self.append_message(f"Disconnected from server: {e}")
                 self.close_connection()
                 self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
 
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
@@ -95,6 +100,7 @@ class ChatClient:
         self.append_message("Public key exchange timed out. Disconnecting...")
         self.close_connection()
         self.connect_button_order()
+        self.gui.update_connection_status("Disconnected")
 
     def receive_peer_public_key(self, message):
         if self.public_key_timer:
@@ -102,6 +108,8 @@ class ChatClient:
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
         self.append_message("Your friend is now connected.")
+        self.gui.update_connection_status("Connected")
+
         self.disconnect_button_order()
 
     def send_message(self):
@@ -116,6 +124,7 @@ class ChatClient:
                 self.append_message(f"Failed to send message: {e}")
                 self.close_connection()
                 self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
         else:
             self.append_message("No peer public key set or empty message.")
 

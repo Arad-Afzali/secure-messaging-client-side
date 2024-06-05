@@ -19,7 +19,7 @@ class ChatClientGUI(QWidget):
         self.serverPortLabel = QLabel("Server Port:")
         self.serverPortInput = QLineEdit()
         self.connectButton = QPushButton("Connect")
-        self.disconnectButton = QPushButton("Disonnect")
+        self.disconnectButton = QPushButton("Disconnect")
         
 
         self.chatWindow = QTextEdit()

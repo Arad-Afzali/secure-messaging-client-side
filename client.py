@@ -14,11 +14,15 @@ class ChatClient:
         self.sock = None
         self.connected = False
         self.public_key_timer = None
+        self.gui.disconnectButton.setEnabled(False)
+
         self.lock = threading.Lock()  # Synchronize access to the socket
 
         self.gui.connectButton.clicked.connect(self.connect_to_server)
         self.gui.disconnectButton.clicked.connect(self.disconnect_from_server)
         self.gui.sendButton.clicked.connect(self.send_message)
+
+        self.connect_button_order()
 
     def connect_to_server(self):
         host = self.gui.serverIpInput.text()
@@ -34,12 +38,16 @@ class ChatClient:
             self.connected = True
             self.append_message("Connected to server...")
             self.append_message("Waiting for your friend's connection...")
+            self.disconnect_button_order()
+
             threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
             self.append_message(f"Failed to connect to server: {e}")
+            self.gui.disconnectButton.setEnabled(False)
 
     def disconnect_from_server(self):
         self.close_connection()
+        self.connect_button_order()
 
     def listen_for_messages(self):
         try:
@@ -52,17 +60,19 @@ class ChatClient:
                 elif message.startswith("DISCONNECT"):
                     self.append_message("Disconnected from server.")
                     self.connected = False
-                    self.gui.connectButton.setEnabled(True)
+                    self.connect_button_order()
                 else:
                     self.receive_message(message)
         except socket.error as e:
             if self.connected:
                 self.append_message(f"Socket error: {e}")
                 self.close_connection()
+                self.connect_button_order()
         except Exception as e:
             if self.connected:
                 self.append_message(f"Disconnected from server: {e}")
                 self.close_connection()
+                self.connect_button_order()
 
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
@@ -78,6 +88,7 @@ class ChatClient:
     def handle_public_key_timeout(self):
         self.append_message("Public key exchange timed out. Disconnecting...")
         self.close_connection()
+        self.connect_button_order()
 
     def receive_peer_public_key(self, message):
         if self.public_key_timer:
@@ -85,6 +96,7 @@ class ChatClient:
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
         self.append_message("Your friend is now connected.")
+        self.disconnect_button_order()
 
     def send_message(self):
         message = self.gui.messageInput.text()
@@ -97,6 +109,7 @@ class ChatClient:
             except Exception as e:
                 self.append_message(f"Failed to send message: {e}")
                 self.close_connection()
+                self.connect_button_order()
         else:
             self.append_message("No peer public key set or empty message.")
 
@@ -121,10 +134,18 @@ class ChatClient:
                     except socket.error:
                         pass  # Ignore errors while closing the socket
                 self.append_message("Connection closed.")
-                self.gui.connectButton.setEnabled(True)
 
     def append_message(self, message):
         QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))
+
+
+    def connect_button_order(self):
+        self.gui.disconnectButton.setEnabled(False)
+        self.gui.connectButton.setEnabled(True)
+    
+    def disconnect_button_order(self):
+        self.gui.disconnectButton.setEnabled(True)
+        self.gui.connectButton.setEnabled(False)
 
 def main():
     app = QApplication(sys.argv)

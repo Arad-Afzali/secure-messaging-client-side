@@ -1,9 +1,8 @@
-# client.py
 import sys
 import socket
 import threading
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSlot, Qt, QMetaObject, Q_ARG
 
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
@@ -23,17 +22,17 @@ class ChatClient:
         port = self.gui.serverPortInput.text()
 
         if not host or not port:
-            self.gui.append_message("Please enter a valid IP and port.")
+            self.append_message("Please enter a valid IP and port.")
             return
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.sock.connect((host, int(port)))
             self.connected = True
-            self.gui.append_message("Connected to server.")
+            self.append_message("Connected to server.")
             threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
-            self.gui.append_message(f"Failed to connect to server: {e}")
+            self.append_message(f"Failed to connect to server: {e}")
 
     def listen_for_messages(self):
         try:
@@ -45,12 +44,12 @@ class ChatClient:
                     self.receive_peer_public_key(message)
                 elif message.startswith("DISCONNECT"):
                     self.connected = False
-                    self.gui.append_message("Disconnected from server.")
+                    self.append_message("Disconnected from server.")
                 else:
                     self.receive_message(message)
         except Exception as e:
             self.connected = False
-            self.gui.append_message(f"Disconnected from server: {e}")
+            self.append_message(f"Disconnected from server: {e}")
 
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
@@ -59,27 +58,41 @@ class ChatClient:
     def receive_peer_public_key(self, message):
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
-        self.gui.append_message("Received peer's public key.")
+        self.append_message("Received peer's public key.")
 
     def send_message(self):
         message = self.gui.messageInput.text()
         if message and self.crypto_manager.peer_public_key:
             encrypted_message = self.crypto_manager.encrypt_message(message)
-            self.sock.sendall(encrypted_message.encode('utf-8'))
-            self.gui.messageInput.clear()
-            self.gui.append_message(f"You: {message}")
+            try:
+                self.sock.sendall(encrypted_message.encode('utf-8'))
+                self.gui.messageInput.clear()
+                self.append_message(f"You: {message}")
+            except Exception as e:
+                self.append_message(f"Failed to send message: {e}")
+                self.close_connection()
         else:
-            self.gui.append_message("No peer public key set or empty message.")
+            self.append_message("No peer public key set or empty message.")
 
     def receive_message(self, message):
-        decrypted_message = self.crypto_manager.decrypt_message(message)
-        self.gui.append_message(f"Peer: {decrypted_message}")
+        try:
+            decrypted_message = self.crypto_manager.decrypt_message(message)
+            self.append_message(f"Peer: {decrypted_message}")
+        except Exception as e:
+            self.append_message(f"Failed to decrypt message: {e}")
 
     def close_connection(self):
         if self.connected:
-            self.sock.sendall("DISCONNECT".encode('utf-8'))
-            self.sock.close()
-            self.connected = False
+            try:
+                self.sock.sendall("DISCONNECT".encode('utf-8'))
+            except Exception as e:
+                self.append_message(f"Error sending disconnect message: {e}")
+            finally:
+                self.sock.close()
+                self.connected = False
+
+    def append_message(self, message):
+        QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))
 
 def main():
     app = QApplication(sys.argv)

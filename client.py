@@ -1,134 +1,177 @@
+import sys
 import socket
 import threading
-import sys
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QMetaObject, Q_ARG, QTimer, Qt, pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSlot, Qt, QMetaObject, Q_ARG
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
 
-class ChatClient(QObject):
-    start_timer_signal = pyqtSignal()
-    send_public_key_signal = pyqtSignal()
-    receive_public_key_signal = pyqtSignal()
-    update_progress_signal = pyqtSignal(int)
+class ChatClient:
+    def __init__(self, gui, crypto_manager):
+        self.gui = gui
+        self.crypto_manager = crypto_manager
+        self.sock = None
+        self.connected = False
+        self.public_key_timer = None
+        self.gui.disconnectButton.setEnabled(False)
 
-    def __init__(self):
-        super().__init__()
-        self.gui = ChatClientGUI()
-        self.crypto_manager = CryptoManager()
-        self.socket = None
-        self.time_elapsed = 0
+        self.lock = threading.Lock()  # Synchronize access to the socket
 
-        self.start_timer_signal.connect(self.start_timer)
-        self.send_public_key_signal.connect(self.send_public_key)
-        self.receive_public_key_signal.connect(self.receive_public_key)
-        self.update_progress_signal.connect(self.update_progress_bar)
-
-        self.gui.closeEvent = self.close_event  # Ensure the server is notified when the client closes
-
-    def start(self):
-        self.gui.show()
-        self.gui.sendButton.clicked.connect(self.handle_send_message)
         self.gui.connectButton.clicked.connect(self.connect_to_server)
+        self.gui.disconnectButton.clicked.connect(self.disconnect_from_server)
+        self.gui.sendButton.clicked.connect(self.send_message)
 
+        # Connect the Enter key press to sending the message
+        self.gui.messageInput.returnPressed.connect(self.send_message)  # For QLineEdit
+
+        self.connect_button_order()
 
     def connect_to_server(self):
-        ip = self.gui.serverIpInput.text()
-        port = int(self.gui.serverPortInput.text())
-        threading.Thread(target=self.establish_connection, args=(ip, port), daemon=True).start()
+        host = self.gui.serverIpInput.text()
+        port = self.gui.serverPortInput.text()
 
-    def establish_connection(self, ip, port):
+        if not host or not port:
+            self.append_message("Please enter a valid IP and port.")
+            return
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((ip, port))
-            threading.Thread(target=self.receive_messages, daemon=True).start()
-            self.start_timer_signal.emit()
+            self.sock.connect((host, int(port)))
+            self.connected = True
+            self.append_message("Connected to server...")
+            self.append_message("Waiting for your friend's connection...")
+            self.gui.update_connection_status("Connecting")
+            self.disconnect_button_order()
+
+            threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
-            print(f"Error connecting to server: {e}")
+            self.append_message(f"Failed to connect to server: {e}")
+            self.gui.update_connection_status("Disconnected")
+            self.gui.disconnectButton.setEnabled(False)
 
-    def start_timer(self):
-        self.gui.progressBar.setValue(0)
-        self.time_elapsed = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.on_timer_timeout)
-        self.timer.start(1000)
+    def disconnect_from_server(self):
+        self.close_connection()
+        self.connect_button_order()
+        self.gui.update_connection_status("Disconnected")
 
-        QTimer.singleShot(5000, self.send_public_key_signal.emit)
-        QTimer.singleShot(27000, self.receive_public_key_signal.emit)
+    def listen_for_messages(self):
+        try:
+            while self.connected:
+                message = self.sock.recv(4096).decode('utf-8')
+                if not message:
+                    continue
 
-    def on_timer_timeout(self):
-        self.time_elapsed += 1
-        self.update_progress_signal.emit(self.time_elapsed)
-
-    def update_progress_bar(self, elapsed_time):
-        self.gui.progressBar.setValue(int((elapsed_time / 30) * 100))
+                if message.startswith("REQUEST_PUBLIC_KEY"):
+                    self.send_public_key()
+                elif message.startswith("PEER_PUBLIC_KEY"):
+                    self.receive_peer_public_key(message)
+                elif message.startswith("DISCONNECT"):
+                    self.append_message("Disconnected from server.")
+                    self.connected = False
+                    self.connect_button_order()
+                    self.gui.update_connection_status("Disconnected")
+                else:
+                    self.receive_message(message)
+        except socket.error as e:
+            if self.connected:
+                self.append_message(f"Socket error: {e}")
+                self.close_connection()
+                self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
+        except Exception as e:
+            if self.connected:
+                self.append_message(f"Disconnected from server: {e}")
+                self.close_connection()
+                self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
 
     def send_public_key(self):
-        if self.socket:
-            public_key = self.crypto_manager.get_public_key()
-            self.socket.sendall(b'KEY:' + public_key)
-            print(f"Sent public key to server: {public_key[:30]}...")
+        public_key = self.crypto_manager.get_public_key().decode('utf-8')
+        self.sock.sendall(f"PUBLIC_KEY:{public_key}".encode('utf-8'))
+        self.start_public_key_timer()
 
-    def receive_public_key(self):
-        if self.socket:
-            self.socket.sendall(b'REQ_KEY')
-            peer_public_key = self.socket.recv(4096)
-            self.crypto_manager.set_peer_public_key(peer_public_key)
-            print(f"Received public key from peer: {peer_public_key[:30]}...")
-            QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Connected!"))
+    def start_public_key_timer(self):
+        if self.public_key_timer:
+            self.public_key_timer.cancel()
+        self.public_key_timer = threading.Timer(60.0, self.handle_public_key_timeout)
+        self.public_key_timer.start()
 
-
-    def handle_send_message(self):
-        message = self.gui.messageInput.text()
-        if message:
-            try:
-                encrypted_message = self.crypto_manager.encrypt_message(message)
-                self.socket.sendall((encrypted_message + "\n").encode())
-                print(f"Sent encrypted message: {encrypted_message[:30]}...")
-                self.gui.append_message(f"You: {message}")
-                self.gui.messageInput.clear()
-            except Exception as e:
-                print(f"Error sending message: {e}")
-
-    def receive_messages(self):
-        buffer = ""
-        while True:
-            try:
-                data = self.socket.recv(4096)
-                if not data:
-                    print("Connection closed by the server.")
-                    break
-                buffer += data.decode()
-                while "\n" in buffer:
-                    encrypted_message, buffer = buffer.split("\n", 1)
-                    print(f"Received encrypted message: {encrypted_message[:30]}...")
-                    message = self.crypto_manager.decrypt_message(encrypted_message)
-                    QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, f"Friend: {message}"))
-            except Exception as e:
-                print(f"Error receiving message: {e}")
-                break
-        self.notify_disconnection()
-
-    def notify_disconnection(self):
+    def handle_public_key_timeout(self):
+        self.append_message("Public key exchange timed out. Disconnecting...")
         self.close_connection()
-        QMetaObject.invokeMethod(self.gui, "append_message", Q_ARG(str, "Disconnected from the server."))
+        self.connect_button_order()
+        self.gui.update_connection_status("Disconnected")
+
+    def receive_peer_public_key(self, message):
+        if self.public_key_timer:
+            self.public_key_timer.cancel()
+        peer_public_key = message.split(":", 1)[1]
+        self.crypto_manager.set_peer_public_key(peer_public_key)
+        self.append_message("Your friend is now connected.")
+        self.gui.update_connection_status("Connected")
+
+        self.disconnect_button_order()
+
+    def send_message(self):
+        message = self.gui.messageInput.text()
+        if message and self.crypto_manager.peer_public_key:
+            encrypted_message = self.crypto_manager.encrypt_message(message)
+            try:
+                self.sock.sendall(encrypted_message.encode('utf-8'))
+                self.gui.messageInput.clear()
+                self.append_message(f"You: {message}")
+            except Exception as e:
+                self.append_message(f"Failed to send message: {e}")
+                self.close_connection()
+                self.connect_button_order()
+                self.gui.update_connection_status("Disconnected")
+        else:
+            self.append_message("No peer public key set or empty message.")
+
+    def receive_message(self, message):
+        try:
+            decrypted_message = self.crypto_manager.decrypt_message(message)
+            if decrypted_message:  # Check if decrypted message is valid
+                self.append_message(f"Peer: {decrypted_message}")
+        except Exception as e:
+            self.append_message(f"Failed to decrypt message: {e}")
 
     def close_connection(self):
-        if self.socket:
-            try:
-                self.socket.close()
-                print("Socket closed.")
-            except Exception as e:
-                print(f"Error closing socket: {e}")
-            finally:
-                self.socket = None
+        with self.lock:
+            if self.connected:
+                self.connected = False
+                try:
+                    self.sock.sendall("DISCONNECT".encode('utf-8'))
+                except socket.error:
+                    pass  # Ignore errors while sending disconnect
+                finally:
+                    try:
+                        self.sock.close()
+                    except socket.error:
+                        pass  # Ignore errors while closing the socket
+                self.append_message("Connection closed.")
+        return  # Ensure no further processing
 
-    def close_event(self, event):
-        self.close_connection()
-        event.accept()
+    def append_message(self, message):
+        QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))
 
-if __name__ == "__main__":
+    def connect_button_order(self):
+        self.gui.disconnectButton.setEnabled(False)
+        self.gui.connectButton.setEnabled(True)
+    
+    def disconnect_button_order(self):
+        self.gui.disconnectButton.setEnabled(True)
+        self.gui.connectButton.setEnabled(False)
+
+def main():
     app = QApplication(sys.argv)
-    client = ChatClient()
-    client.start()
+    gui = ChatClientGUI()
+    crypto_manager = CryptoManager()
+    client = ChatClient(gui, crypto_manager)
+
+    gui.closeEvent = lambda event: (client.close_connection(), event.accept())
+    gui.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

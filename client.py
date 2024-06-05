@@ -16,6 +16,7 @@ class ChatClient:
         self.public_key_timer = None
 
         self.gui.connectButton.clicked.connect(self.connect_to_server)
+        self.gui.disconnectButton.clicked.connect(self.diconnect_from_server)
         self.gui.sendButton.clicked.connect(self.send_message)
 
     def connect_to_server(self):
@@ -36,6 +37,10 @@ class ChatClient:
         except Exception as e:
             self.append_message(f"Failed to connect to server: {e}")
 
+    
+    def diconnect_from_server(self):
+        self.close_connection()
+
     def listen_for_messages(self):
         try:
             while self.connected:
@@ -47,11 +52,15 @@ class ChatClient:
                 elif message.startswith("DISCONNECT"):
                     self.connected = False
                     self.append_message("Disconnected from server.")
+                    self.gui.connectButton.setEnabled(True)  # Grey out the button
+
                 else:
                     self.receive_message(message)
         except Exception as e:
             self.connected = False
             self.append_message(f"Disconnected from server: {e}")
+            self.gui.connectButton.setEnabled(True)  # Grey out the button
+
 
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
@@ -62,6 +71,8 @@ class ChatClient:
         if self.public_key_timer:
             self.public_key_timer.cancel()
         self.public_key_timer = threading.Timer(60.0, self.handle_public_key_timeout)
+        self.gui.connectButton.setEnabled(False)  # Grey out the button
+
         self.public_key_timer.start()
 
     def handle_public_key_timeout(self):
@@ -105,6 +116,8 @@ class ChatClient:
             finally:
                 self.sock.close()
                 self.connected = False
+                self.gui.connectButton.setEnabled(True)  # Make the button active again if input is invalid
+
 
     def append_message(self, message):
         QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))

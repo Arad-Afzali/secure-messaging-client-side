@@ -53,6 +53,9 @@ class ChatClient:
         try:
             while self.connected:
                 message = self.sock.recv(4096).decode('utf-8')
+                if not message:
+                    continue
+
                 if message.startswith("REQUEST_PUBLIC_KEY"):
                     self.send_public_key()
                 elif message.startswith("PEER_PUBLIC_KEY"):
@@ -116,7 +119,8 @@ class ChatClient:
     def receive_message(self, message):
         try:
             decrypted_message = self.crypto_manager.decrypt_message(message)
-            self.append_message(f"Peer: {decrypted_message}")
+            if decrypted_message:  # Check if decrypted message is valid
+                self.append_message(f"Peer: {decrypted_message}")
         except Exception as e:
             self.append_message(f"Failed to decrypt message: {e}")
 
@@ -134,10 +138,10 @@ class ChatClient:
                     except socket.error:
                         pass  # Ignore errors while closing the socket
                 self.append_message("Connection closed.")
+        return  # Ensure no further processing
 
     def append_message(self, message):
         QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))
-
 
     def connect_button_order(self):
         self.gui.disconnectButton.setEnabled(False)

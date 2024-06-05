@@ -59,7 +59,7 @@ class ChatClient:
     def receive_peer_public_key(self, message):
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
-        self.append_message("Your friend is now Connected!")
+        self.append_message("Your friend is now connected.")
 
     def send_message(self):
         message = self.gui.messageInput.text()

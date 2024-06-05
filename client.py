@@ -14,9 +14,10 @@ class ChatClient:
         self.sock = None
         self.connected = False
         self.public_key_timer = None
+        self.lock = threading.Lock()  # Synchronize access to the socket
 
         self.gui.connectButton.clicked.connect(self.connect_to_server)
-        self.gui.disconnectButton.clicked.connect(self.diconnect_from_server)
+        self.gui.disconnectButton.clicked.connect(self.disconnect_from_server)
         self.gui.sendButton.clicked.connect(self.send_message)
 
     def connect_to_server(self):
@@ -32,13 +33,12 @@ class ChatClient:
             self.sock.connect((host, int(port)))
             self.connected = True
             self.append_message("Connected to server...")
-            self.append_message("waiting for your friend's connection...")
+            self.append_message("Waiting for your friend's connection...")
             threading.Thread(target=self.listen_for_messages, daemon=True).start()
         except Exception as e:
             self.append_message(f"Failed to connect to server: {e}")
 
-    
-    def diconnect_from_server(self):
+    def disconnect_from_server(self):
         self.close_connection()
 
     def listen_for_messages(self):
@@ -50,17 +50,19 @@ class ChatClient:
                 elif message.startswith("PEER_PUBLIC_KEY"):
                     self.receive_peer_public_key(message)
                 elif message.startswith("DISCONNECT"):
-                    self.connected = False
                     self.append_message("Disconnected from server.")
-                    self.gui.connectButton.setEnabled(True)  # Grey out the button
-
+                    self.connected = False
+                    self.gui.connectButton.setEnabled(True)
                 else:
                     self.receive_message(message)
+        except socket.error as e:
+            if self.connected:
+                self.append_message(f"Socket error: {e}")
+                self.close_connection()
         except Exception as e:
-            self.connected = False
-            self.append_message(f"Disconnected from server: {e}")
-            self.gui.connectButton.setEnabled(True)  # Grey out the button
-
+            if self.connected:
+                self.append_message(f"Disconnected from server: {e}")
+                self.close_connection()
 
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
@@ -71,8 +73,6 @@ class ChatClient:
         if self.public_key_timer:
             self.public_key_timer.cancel()
         self.public_key_timer = threading.Timer(60.0, self.handle_public_key_timeout)
-        self.gui.connectButton.setEnabled(False)  # Grey out the button
-
         self.public_key_timer.start()
 
     def handle_public_key_timeout(self):
@@ -108,16 +108,20 @@ class ChatClient:
             self.append_message(f"Failed to decrypt message: {e}")
 
     def close_connection(self):
-        if self.connected:
-            try:
-                self.sock.sendall("DISCONNECT".encode('utf-8'))
-            except Exception as e:
-                self.append_message(f"Error sending disconnect message: {e}")
-            finally:
-                self.sock.close()
+        with self.lock:
+            if self.connected:
                 self.connected = False
-                self.gui.connectButton.setEnabled(True)  # Make the button active again if input is invalid
-
+                try:
+                    self.sock.sendall("DISCONNECT".encode('utf-8'))
+                except socket.error:
+                    pass  # Ignore errors while sending disconnect
+                finally:
+                    try:
+                        self.sock.close()
+                    except socket.error:
+                        pass  # Ignore errors while closing the socket
+                self.append_message("Connection closed.")
+                self.gui.connectButton.setEnabled(True)
 
     def append_message(self, message):
         QMetaObject.invokeMethod(self.gui, "append_message", Qt.QueuedConnection, Q_ARG(str, message))

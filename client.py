@@ -22,6 +22,9 @@ class ChatClient:
         self.gui.disconnectButton.clicked.connect(self.disconnect_from_server)
         self.gui.sendButton.clicked.connect(self.send_message)
 
+        # Connect the Enter key press to sending the message
+        self.gui.messageInput.returnPressed.connect(self.send_message)  # For QLineEdit
+
         self.connect_button_order()
 
     def connect_to_server(self):

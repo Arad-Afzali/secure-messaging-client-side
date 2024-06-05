@@ -13,6 +13,7 @@ class ChatClient:
         self.crypto_manager = crypto_manager
         self.sock = None
         self.connected = False
+        self.public_key_timer = None
 
         self.gui.connectButton.clicked.connect(self.connect_to_server)
         self.gui.sendButton.clicked.connect(self.send_message)
@@ -55,8 +56,21 @@ class ChatClient:
     def send_public_key(self):
         public_key = self.crypto_manager.get_public_key().decode('utf-8')
         self.sock.sendall(f"PUBLIC_KEY:{public_key}".encode('utf-8'))
+        self.start_public_key_timer()
+
+    def start_public_key_timer(self):
+        if self.public_key_timer:
+            self.public_key_timer.cancel()
+        self.public_key_timer = threading.Timer(60.0, self.handle_public_key_timeout)
+        self.public_key_timer.start()
+
+    def handle_public_key_timeout(self):
+        self.append_message("Public key exchange timed out. Disconnecting...")
+        self.close_connection()
 
     def receive_peer_public_key(self, message):
+        if self.public_key_timer:
+            self.public_key_timer.cancel()
         peer_public_key = message.split(":", 1)[1]
         self.crypto_manager.set_peer_public_key(peer_public_key)
         self.append_message("Your friend is now connected.")

@@ -1,3 +1,4 @@
+import ssl
 import sys
 import socket
 import threading
@@ -35,6 +36,17 @@ class ChatClient:
             return
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        # Wrap the socket with SSL/TLS
+        context = ssl.create_default_context()
+        # Ensure the server certificate is verified
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = False #change later
+        context.load_verify_locations('server.crt')
+        context.verify_mode = ssl.CERT_NONE  # Disable certificate verification for development
+
+        self.sock = context.wrap_socket(self.sock, server_hostname=host)
+
         try:
             self.sock.connect((host, int(port)))
             self.connected = True

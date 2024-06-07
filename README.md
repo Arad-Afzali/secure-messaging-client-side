@@ -66,16 +66,16 @@ To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment t
 
 You can generate self-signed certificates using OpenSSL:
     
-    ```bash
-    # Generate a new RSA private key
-    openssl genrsa -out client.key 4096
+        ```bash
+        # Generate a new RSA private key
+        openssl genrsa -out client.key 4096
 
-    # Generate a Certificate Signing Request (CSR)
-    openssl req -new -key client.key -out client.csr
+        # Generate a Certificate Signing Request (CSR)
+        openssl req -new -key client.key -out client.csr
 
-    # Generate a self-signed SSL certificate
-    openssl x509 -req -days 365 -in client.csr -signkey client.key -out client.crt
-    ```
+        # Generate a self-signed SSL certificate
+        openssl x509 -req -days 365 -in client.csr -signkey client.key -out client.crt
+        ```
 
 6. **Obtaining Certificates from a Certificate Authority (CA)**:
 

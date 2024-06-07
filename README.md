@@ -57,7 +57,8 @@ Please follow the installation and usage instructions in the server application'
 ### Note (Optional but Recommended Steps)
 
 4. **SSL/TLS Support**:
-To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment the relevant sections in the ChatClient class and provide the path to your certificate file:
+
+    To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment the relevant sections in the ChatClient class and provide the path to your certificate file:
 
     ```bash
     # Uncomment here for SSL/TLS certificate---------------------

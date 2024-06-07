@@ -64,7 +64,7 @@ To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment t
     ```
 5. **Obtaining SSL/TLS Certificates Self-Signed Certificates (for testing purposes)**:
 
-You can generate self-signed certificates using OpenSSL:
+    You can generate self-signed certificates using OpenSSL:
     
     ```bash
     # Generate a new RSA private key
@@ -79,10 +79,10 @@ You can generate self-signed certificates using OpenSSL:
 
 6. **Obtaining Certificates from a Certificate Authority (CA)**:
 
-For production, it is recommended to obtain certificates from a trusted CA. Services like Let's Encrypt offer free SSL/TLS certificates:
+    For production, it is recommended to obtain certificates from a trusted CA. Services like Let's Encrypt offer free SSL/TLS certificates:
 
-Follow the instructions on the Let's Encrypt website to obtain your certificate.
-Use the obtained fullchain.pem and privkey.pem files in the SSL/TLS configuration.
+    Follow the instructions on the Let's Encrypt website to obtain your certificate.
+    Use the obtained fullchain.pem and privkey.pem files in the SSL/TLS configuration.
 
 ## Usage
 

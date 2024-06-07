@@ -16,7 +16,7 @@ class ChatClientGUI(QWidget):
 
         self.layout = QVBoxLayout()
 
-        self.serverIpLabel = QLabel("Server IP:")
+        self.serverIpLabel = QLabel("Server IP or Domain:")
         self.serverIpInput = QLineEdit()
         self.serverPortLabel = QLabel("Server Port:")
         self.serverPortInput = QLineEdit()

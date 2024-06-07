@@ -1,3 +1,4 @@
+import ssl
 import sys
 import socket
 import threading
@@ -22,7 +23,7 @@ class ChatClient:
         self.gui.sendButton.clicked.connect(self.send_message)
 
         # Connect the Enter key press to sending the message
-        self.gui.messageInput.returnPressed.connect(self.send_message)  # For QLineEdit
+        self.gui.messageInput.returnPressed.connect(self.send_message)  
 
         self.connect_button_order()
 
@@ -35,6 +36,18 @@ class ChatClient:
             return
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+# Uncomment here for SSL/TLS certificate---------------------
+        
+        # Wrap the socket with SSL/TLS
+        # context = ssl.create_default_context()
+        # context.verify_mode = ssl.CERT_REQUIRED
+        # context.check_hostname = True 
+        # context.load_verify_locations('path/to/fullchain.pem')
+
+        # self.sock = context.wrap_socket(self.sock, server_hostname=host)
+
+# ------------------------------------------------------------
         try:
             self.sock.connect((host, int(port)))
             self.connected = True

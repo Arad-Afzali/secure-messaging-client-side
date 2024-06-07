@@ -54,9 +54,9 @@ Please follow the installation and usage instructions in the server application'
     pip install -r requirements.txt
     ```
 
-### Note (Optional Steps)
+### Note (Optional but Recommended Steps)
 
-4. **SSL/TLS Support (Optional but Recommended)**:
+4. **SSL/TLS Support**:
 To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment the relevant sections in the ChatClient class and provide the path to your certificate file:
 
     ```bash

@@ -65,6 +65,7 @@ To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment t
 5. **Obtaining SSL/TLS Certificates Self-Signed Certificates (for testing purposes)**:
 
 You can generate self-signed certificates using OpenSSL:
+    
     ```bash
     # Generate a new RSA private key
     openssl genrsa -out client.key 4096

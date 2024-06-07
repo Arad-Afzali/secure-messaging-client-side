@@ -17,28 +17,28 @@ This is the client application for a secure chat system. It connects to a secure
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
 
 ```bash
 git clone https://github.com/Arad-Afzali/secure-messaging-client-side.git
 cd secure-messaging-client-side
 ```
 
-2. Create a virtual environment and activate it:
+2. **Create a virtual environment and activate it** (Recommended):
 
-On macOS and Linux:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+    **On macOS and Linux:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
-On Windows:
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
+    **On Windows:**
+    ```bash
+    python -m venv venv
+    venv\Scripts\activate
+    ```
 
-3. Install the required packages:
+3. **Install the required packages**:
 
 ```bash
 pip install -r requirements.txt
@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ### Note (Optional Steps)
 
-4. SSL/TLS Support (Optional but Recommended)
+4. **SSL/TLS Support (Optional but Recommended)**:
 To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment the relevant sections in the ChatClient class and provide the path to your certificate file:
 
 ```bash
@@ -62,7 +62,7 @@ To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment t
 
 # ------------------------------------------------------------
 ```
-5. Obtaining SSL/TLS Certificates Self-Signed Certificates (for testing purposes):
+5. **Obtaining SSL/TLS Certificates Self-Signed Certificates (for testing purposes)**:
 
 You can generate self-signed certificates using OpenSSL:
 ```bash
@@ -76,7 +76,7 @@ openssl req -new -key client.key -out client.csr
 openssl x509 -req -days 365 -in client.csr -signkey client.key -out client.crt
 ```
 
-6. Obtaining Certificates from a Certificate Authority (CA):
+6. **Obtaining Certificates from a Certificate Authority (CA)**:
 
 For production, it is recommended to obtain certificates from a trusted CA. Services like Let's Encrypt offer free SSL/TLS certificates:
 
@@ -85,13 +85,13 @@ Use the obtained fullchain.pem and privkey.pem files in the SSL/TLS configuratio
 
 ## Usage
 
-1. Start the client application:
+1. **Start the client application**:
 ```bash
 python3 client.py
 ```
-2. Enter the server IP or domain and port, then click "Connect".
+2. **Enter the server IP or domain and port, then click "Connect".**
 
-3. Once connected, exchange messages securely with your peer.
+3. **Once connected, exchange messages securely with your peer.**
 
 
 

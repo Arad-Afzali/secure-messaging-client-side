@@ -2,12 +2,22 @@
 
 This is the client application for a secure chat system. It connects to a secure chat server, exchanges public keys for secure communication, and allows encrypted messaging between clients.
 
+## Server Application
+
+The server application is necessary for the connection of client apps. You can find the server application repository and instructions on how to set it up below:
+
+https://github.com/Arad-Afzali/secure-messaging-server-side
+
+Please follow the installation and usage instructions in the server application's README to ensure proper communication with the clients.
+
 ## Features
 
-- Generates RSA keys for secure communication.
+- Generates RSA keys for secure communication with a bit length of 4096 bits upon initialization.
 - Encrypts and decrypts messages using RSA and OAEP padding.
 - Connects to the secure chat server and exchanges public keys with another client.
 - GUI for connecting, sending, and receiving messages.
+- Secure Key Exchange to ensure only intended peers can access the keys.
+- Optional SSL/TLS Support to encrypt the entire communication channel between the client and server, ensures safe public   key exchange, but even without SSL/TLS, the application maintains a high level of security for encrypted messages.
 
 ## Requirements
 

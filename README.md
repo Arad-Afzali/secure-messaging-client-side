@@ -2,6 +2,8 @@
 
 This is the client application for a secure chat system. It connects to a secure chat server, exchanges public keys for secure communication, and allows encrypted messaging between clients.
 
+![alt text](<ss.png>)
+
 ## Server Application
 
 The server application is necessary for the connection of client apps. You can find the server application repository and instructions on how to set it up below:

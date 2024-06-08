@@ -1,4 +1,4 @@
-# Secure Chat Client
+# Secure Chat Client (end-to-end encryption)
 
 This is the client application for a secure chat system. It connects to a secure chat server, exchanges public keys for secure communication, and allows encrypted messaging between clients.
 

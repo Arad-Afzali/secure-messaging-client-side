@@ -20,11 +20,17 @@ class ChatClientGUI(QWidget):
         self.serverIpInput = QLineEdit()
         self.serverPortLabel = QLabel("Server Port:")
         self.serverPortInput = QLineEdit()
+        self.certLabel = QLabel("Server certificate (for TLS):")
+        self.certInput = QLineEdit()
+        self.certInput.setPlaceholderText("e.g. server.crt (leave empty to connect without TLS)")
 
         # Connection status label
         self.connectionStatusLabel = QLabel("Connection Status:")
         self.connectionStatus = QLabel("Disconnected")
         self.update_connection_status("Disconnected")
+
+        self.fingerprintLabel = QLabel("Safety code: -")
+        self.fingerprintLabel.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         self.connectButton = QPushButton("Connect")
         self.disconnectButton = QPushButton("Disconnect")
@@ -38,8 +44,11 @@ class ChatClientGUI(QWidget):
         self.layout.addWidget(self.serverIpInput)
         self.layout.addWidget(self.serverPortLabel)
         self.layout.addWidget(self.serverPortInput)
+        self.layout.addWidget(self.certLabel)
+        self.layout.addWidget(self.certInput)
         self.layout.addWidget(self.connectionStatusLabel)
         self.layout.addWidget(self.connectionStatus)
+        self.layout.addWidget(self.fingerprintLabel)
         self.layout.addWidget(self.connectButton)
         self.layout.addWidget(self.disconnectButton)
         self.layout.addWidget(self.chatWindow)
@@ -69,3 +78,6 @@ class ChatClientGUI(QWidget):
             self.connectionStatus.setStyleSheet("background-color: red; " + base_style)
             self.connectionStatus.setAlignment(QtCore.Qt.AlignCenter)
 
+    @pyqtSlot(str)
+    def update_fingerprint(self, fingerprint):
+        self.fingerprintLabel.setText(f"Safety code: {fingerprint or '-'}")

@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import pyqtSlot, Qt, QMetaObject, Q_ARG
 from client_gui import ChatClientGUI
 from client_crypto import CryptoManager
+from protocol import send_msg, recv_msg
 
 class ChatClient:
     def __init__(self, gui, crypto_manager):
@@ -35,20 +36,21 @@ class ChatClient:
             self.append_message("Please enter a valid IP and port.")
             return
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
-# Uncomment here for SSL/TLS certificate---------------------
-        
-        # Wrap the socket with SSL/TLS
-        # context = ssl.create_default_context()
-        # context.verify_mode = ssl.CERT_REQUIRED
-        # context.check_hostname = True 
-        # context.load_verify_locations('path/to/fullchain.pem')
+        cert_file = self.gui.certInput.text().strip()
 
-        # self.sock = context.wrap_socket(self.sock, server_hostname=host)
-
-# ------------------------------------------------------------
         try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            # TLS protects the connection to the server from people on the network.
+            # The chat itself is already end-to-end encrypted (see client_crypto.py).
+            if cert_file:
+                context = ssl.create_default_context(cafile=cert_file)
+                self.sock = context.wrap_socket(self.sock, server_hostname=host)
+            else:
+                self.append_message("Warning: no server certificate given, connecting without TLS.")
+
+            self.crypto_manager.reset_session()
+            self.gui.update_fingerprint("")
             self.sock.connect((host, int(port)))
             self.connected = True
             self.append_message("Connected to server...")
@@ -70,9 +72,7 @@ class ChatClient:
     def listen_for_messages(self):
         try:
             while self.connected:
-                message = self.sock.recv(4096).decode('utf-8')
-                if not message:
-                    continue
+                message = recv_msg(self.sock)
 
                 if message.startswith("REQUEST_PUBLIC_KEY"):
                     self.send_public_key()
@@ -85,7 +85,7 @@ class ChatClient:
                     self.gui.update_connection_status("Disconnected")
                 else:
                     self.receive_message(message)
-        except socket.error as e:
+        except (socket.error, ConnectionError) as e:
             if self.connected:
                 self.append_message(f"Socket error: {e}")
                 self.close_connection()
@@ -99,8 +99,8 @@ class ChatClient:
                 self.gui.update_connection_status("Disconnected")
 
     def send_public_key(self):
-        public_key = self.crypto_manager.get_public_key().decode('utf-8')
-        self.sock.sendall(f"PUBLIC_KEY:{public_key}".encode('utf-8'))
+        public_key = self.crypto_manager.get_public_key()
+        send_msg(self.sock, f"PUBLIC_KEY:{public_key}")
         self.start_public_key_timer()
 
     def start_public_key_timer(self):
@@ -119,18 +119,28 @@ class ChatClient:
         if self.public_key_timer:
             self.public_key_timer.cancel()
         peer_public_key = message.split(":", 1)[1]
-        self.crypto_manager.set_peer_public_key(peer_public_key)
+        try:
+            self.crypto_manager.set_peer_public_key(peer_public_key)
+        except Exception as e:
+            self.append_message(f"Key exchange failed: {e}")
+            self.disconnect_from_server()
+            return
+        fingerprint = self.crypto_manager.fingerprint()
+        QMetaObject.invokeMethod(self.gui, "update_fingerprint", Qt.QueuedConnection, Q_ARG(str, fingerprint))
         self.append_message("Your friend is now connected.")
+        self.append_message(f"Safety code: {fingerprint}")
+        self.append_message("Compare this code with your friend (in person or by phone). "
+                            "If it is different, someone is in the middle.")
         self.gui.update_connection_status("Connected")
 
         self.disconnect_button_order()
 
     def send_message(self):
         message = self.gui.messageInput.text()
-        if message and self.crypto_manager.peer_public_key:
+        if message and self.crypto_manager.is_ready():
             encrypted_message = self.crypto_manager.encrypt_message(message)
             try:
-                self.sock.sendall(encrypted_message.encode('utf-8'))
+                send_msg(self.sock, encrypted_message)
                 self.gui.messageInput.clear()
                 self.append_message(f"You: {message}")
             except Exception as e:
@@ -144,8 +154,7 @@ class ChatClient:
     def receive_message(self, message):
         try:
             decrypted_message = self.crypto_manager.decrypt_message(message)
-            if decrypted_message:  # Check if decrypted message is valid
-                self.append_message(f"Peer: {decrypted_message}")
+            self.append_message(f"Peer: {decrypted_message}")
         except Exception as e:
             self.append_message(f"Failed to decrypt message: {e}")
 
@@ -154,7 +163,7 @@ class ChatClient:
             if self.connected:
                 self.connected = False
                 try:
-                    self.sock.sendall("DISCONNECT".encode('utf-8'))
+                    send_msg(self.sock, "DISCONNECT")
                 except socket.error:
                     pass  # Ignore errors while sending disconnect
                 finally:

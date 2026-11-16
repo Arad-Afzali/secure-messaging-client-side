@@ -14,18 +14,27 @@ Please follow the installation and usage instructions in the server application'
 
 ## Features
 
-- Generates RSA keys for secure communication with a bit length of 4096 bits upon initialization.
-- Encrypts and decrypts messages using RSA and OAEP padding.
-- Connects to the secure chat server and exchanges public keys with another client.
-- GUI for connecting, sending, and receiving messages.
-- Secure Key Exchange to ensure only intended peers can access the keys.
-- Optional SSL/TLS Support to encrypt the entire communication channel between the client and server, ensures safe public   key exchange, but even without SSL/TLS, the application maintains a high level of security for encrypted messages.
+- **End-to-end encryption.** Messages are encrypted with AES-256-GCM. The keys come from an X25519 key exchange, run through HKDF-SHA256, with a separate key for each direction.
+- **New keys every session.** Each chat uses a fresh X25519 key pair, so a key leaked later cannot decrypt old chats (forward secrecy).
+- **Safety code.** Each client has a long-term Ed25519 identity key (`identity_key.pem`) and signs its session key with it. Both users see the same safety code; if they compare it (in person or by phone) and it matches, the server or anyone else cannot have swapped the keys.
+- **Replay and tamper protection.** Every message carries a counter that is checked, and AES-GCM rejects any message changed on the way.
+- **TLS to the server.** Give the client the server's certificate and the connection to the server is also wrapped in TLS, with the certificate and hostname checked.
+- **Message framing.** Every message is sent with a 4-byte length first (`protocol.py`), so long messages and fast messages arrive whole.
+- PyQt5 GUI for connecting, chatting and showing the safety code.
+
+### How it works
+
+1. Both clients connect to the server and send their identity key, a new X25519 session key, and a signature over the session key.
+2. The server passes each client's keys to the other. It never sees a private key.
+3. Each client checks the signature, does X25519, and derives the two AES keys.
+4. Both users compare the safety code shown in the app.
+5. Messages are encrypted on one client and only decrypted on the other. The server only forwards them.
 
 ## Requirements
 
-- Python 3.x
+- Python 3.8+
 - PyQt5
-- pycryptodome
+- cryptography
 
 ## Installation
 
@@ -56,46 +65,7 @@ Please follow the installation and usage instructions in the server application'
     pip install -r requirements.txt
     ```
 
-### Note (Optional but Recommended Steps)
-
-4. **SSL/TLS Support**:
-
-    To enable SSL/TLS support, you need to wrap the socket with SSL/TLS. Uncomment the relevant sections in the ChatClient class and provide the path to your certificate file:
-
-    ```bash
-    # Uncomment here for SSL/TLS certificate---------------------
-
-    # Wrap the socket with SSL/TLS
-    # context = ssl.create_default_context()
-    # context.verify_mode = ssl.CERT_REQUIRED
-    # context.check_hostname = True 
-    # context.load_verify_locations('path/to/fullchain.pem')
-
-    # self.sock = context.wrap_socket(self.sock, server_hostname=host)
-
-    # ------------------------------------------------------------
-    ```
-5. **Obtaining SSL/TLS Certificates Self-Signed Certificates (for testing purposes)**:
-
-    You can generate self-signed certificates using OpenSSL:
-    
-    ```bash
-    # Generate a new RSA private key
-    openssl genrsa -out client.key 4096
-
-    # Generate a Certificate Signing Request (CSR)
-    openssl req -new -key client.key -out client.csr
-
-    # Generate a self-signed SSL certificate
-    openssl x509 -req -days 365 -in client.csr -signkey client.key -out client.crt
-    ```
-
-6. **Obtaining Certificates from a Certificate Authority (CA)**:
-
-    For production, it is recommended to obtain certificates from a trusted CA. Services like Let's Encrypt offer free SSL/TLS certificates:
-
-    Follow the instructions on the Let's Encrypt website to obtain your certificate.
-    Use the obtained fullchain.pem and privkey.pem files in the SSL/TLS configuration.
+4. **TLS (recommended)**: get `server.crt` from whoever runs the server (see `make_cert.sh` in the server repository). It holds no secret.
 
 ## Usage
 
@@ -103,9 +73,11 @@ Please follow the installation and usage instructions in the server application'
     ```bash
     python3 client.py
     ```
-2. **Enter the server IP or domain and port, then click "Connect".**
+2. **Enter the server IP or domain, the port and the path to `server.crt`, then click "Connect".** Without a certificate the app still works, but the connection to the server is not TLS.
 
-3. **Once connected, exchange messages securely with your peer.**
+3. **When your friend connects, compare the safety code.** Read it out over a phone call or check it in person. If the codes differ, disconnect: someone is in the middle.
+
+4. **Chat.**
 
 
 

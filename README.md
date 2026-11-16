@@ -1,16 +1,16 @@
 # Secure Chat Client (end-to-end encryption)
 
-This is the client application for a secure chat system. It connects to a secure chat server, exchanges public keys for secure communication, and allows encrypted messaging between clients.
+The client for a two-person secure chat. Messages are encrypted on your computer and only decrypted on your friend's, so the server in the middle only ever forwards ciphertext. A safety code lets the two of you check that nobody, not even the server, swapped the keys.
 
-![alt text](<ss.png>)
+![Two clients chatting over TLS with matching safety codes](screenshots/chat.png)
+
+*Two clients connected over TLS. Both show the same safety code, so the keys were not swapped.*
 
 ## Server Application
 
-The server application is necessary for the connection of client apps. You can find the server application repository and instructions on how to set it up below:
+The clients talk through a small relay server. You can find it, with its setup steps, here:
 
 https://github.com/Arad-Afzali/secure-messaging-server-side
-
-Please follow the installation and usage instructions in the server application's README to ensure proper communication with the clients.
 
 ## Features
 
@@ -20,7 +20,7 @@ Please follow the installation and usage instructions in the server application'
 - **Replay and tamper protection.** Every message carries a counter that is checked, and AES-GCM rejects any message changed on the way.
 - **TLS to the server.** Give the client the server's certificate and the connection to the server is also wrapped in TLS, with the certificate and hostname checked.
 - **Message framing.** Every message is sent with a 4-byte length first (`protocol.py`), so long messages and fast messages arrive whole.
-- PyQt5 GUI for connecting, chatting and showing the safety code.
+- **PyQt5 GUI.** Connection status, the safety code, and colored chat. You can only type once the keys are exchanged.
 
 ### How it works
 
@@ -29,6 +29,13 @@ Please follow the installation and usage instructions in the server application'
 3. Each client checks the signature, does X25519, and derives the two AES keys.
 4. Both users compare the safety code shown in the app.
 5. Messages are encrypted on one client and only decrypted on the other. The server only forwards them.
+
+| File | What it does |
+|---|---|
+| `client.py` | Connection, key exchange and sending/receiving messages |
+| `client_crypto.py` | Identity key, X25519, HKDF, AES-GCM, safety code |
+| `client_gui.py` | The PyQt5 window |
+| `protocol.py` | Length-prefixed messages over TCP |
 
 ## Requirements
 
@@ -65,7 +72,7 @@ Please follow the installation and usage instructions in the server application'
     pip install -r requirements.txt
     ```
 
-4. **TLS (recommended)**: get `server.crt` from whoever runs the server (see `make_cert.sh` in the server repository). It holds no secret.
+4. **TLS (recommended)**: get `server.crt` from whoever runs the server (see `make_cert.sh` in the server repository) and put it next to `client.py`. It holds no secret.
 
 ## Usage
 
@@ -73,13 +80,15 @@ Please follow the installation and usage instructions in the server application'
     ```bash
     python3 client.py
     ```
-2. **Enter the server IP or domain, the port and the path to `server.crt`, then click "Connect".** Without a certificate the app still works, but the connection to the server is not TLS.
 
-3. **When your friend connects, compare the safety code.** Read it out over a phone call or check it in person. If the codes differ, disconnect: someone is in the middle.
+2. **Enter the server address, the port and the certificate file, then click "Connect".** The status turns blue while you wait for your friend. Without a certificate the app still works, but the connection to the server is not TLS.
 
-4. **Chat.**
+    ![Connection form before connecting, and waiting for the friend](screenshots/connect.png)
 
+3. **When your friend connects, compare the safety code.** The status turns green and the code appears next to it. Read it out over a phone call or check it in person. If the codes differ, disconnect: someone is in the middle.
 
+4. **Chat.** Type a message and press Enter.
 
 ## Contributing
+
 Contributions are welcome! Please open an issue or submit a pull request.
